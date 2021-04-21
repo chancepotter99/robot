@@ -15,7 +15,7 @@ Servo jaws,base,arm,forearm;
 #define joy2_x 2
 #define joy2_y 3
 /*  Initialize constants for joystick input pin numbers
-    analog pins 0-3     */
+    analog pins 0-3      */
 #define joy1_press 2
 #define joy2_press 3
 /*  Initialize constants for joystick switch input pin numbers
@@ -23,7 +23,8 @@ Servo jaws,base,arm,forearm;
 
 #define PLAY 12
 #define REC 13
-/*  Initialize constants for button inputs  */
+/*  Initialize constants for button inputs  
+    digital pins 12-13   */
 
 double jaws_out = 0;
 double base_out = 90;
