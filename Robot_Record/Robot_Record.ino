@@ -41,6 +41,9 @@ double max_speed = 1;
 double drift_ratio = 0.25;
 // Minimum deflection of joystick required to cause movement.
 
+String bar = "-------------------------";
+// visually separates serial monitor outputs
+
 void setup() {
   pinMode(joy1_press, INPUT);
   pinMode(joy2_press, INPUT);
@@ -72,6 +75,11 @@ double joy_jaws,joy_base,joy_arm,joy_forearm;
 
 double jaws_speed, base_speed, arm_speed, forearm_speed;
 
+bool isRecording = false; 
+  //Initialize boolean value for movement recording
+
+bool isPlaying = false;
+  //Initalize boolean value for recording playback
 void loop() {
  
 
@@ -86,6 +94,42 @@ void loop() {
   /*  Joystick inputs are shifted by 1023/2 in order place the 
       origin of input values at the joystick center rather than 
       the NW corner  */
+  
+  if (digitalRead(REC) == LOW) {
+    Serial.println(bar);
+    if (isRecording) {
+      isRecording = false;
+      Serial.println("Recording stopped");
+    } 
+    else if (isPlaying) {
+      isPlaying = false;
+      isRecording = true;
+      Serial.println("Playback stopped, now recording...");
+    }
+    else {
+      isRecording = true;
+      Serial.println("Now recording...");
+    }
+    delay(1000);
+  }
+
+  if (digitalRead(PLAY) == LOW) {
+    Serial.println(bar);
+    if (isPlaying) {
+      isPlaying = false;
+      Serial.println("Playback stopped");
+    } 
+    else if (isRecording) {
+      isRecording = false;
+      isPlaying = true;
+      Serial.println("Recording stopped, now beginning playback...");
+    }
+    else {
+      isPlaying = true;
+      Serial.println("Beginning Playback...");
+    }
+    delay(1000);
+  }
       
   base_speed = frac_map(joy_base, -center, center, -max_speed, max_speed);
   if (abs(base_speed) < max_speed*drift_ratio) {
@@ -135,7 +179,10 @@ void loop() {
   arm.write(arm_out);
   forearm.write(forearm_out);
   // Output servo angles 
-  if (digitalRead(joy1_press) == LOW) {reset();}
+  if (digitalRead(joy1_press) == LOW) {
+    reset();
+    while(digitalRead(joy1_press) == LOW){}
+  }
   // Check for reset button
   
   delay(10);
@@ -147,15 +194,34 @@ double frac_map(double x, double in_min, double in_max, double out_min, double o
 }
 
 void reset() {
-  do { 
-    jaws_out = 0;
-    base_out = 70;
-    arm_out = 90;
-    forearm_out = 90;
-    jaws.write(jaws_out);
-    base.write(base_out);
-    arm.write(arm_out);
-    forearm.write(forearm_out);
-  } while (digitalRead(joy1_press) == LOW);
+  Serial.println(bar);
+  Serial.println("Resetting Position");
+    jaws_out = goTo(jaws, 0);
+    arm_out = goTo(arm, 90);
+    forearm_out = goTo(forearm,90);
+    base_out = goTo(base, 70);
+  Serial.println("Position Reset");
   // While the left joystick is pressed, reset to normal position
+}
+
+//Smoothly move a single servo to a final position
+int goTo(Servo serv, int pos) {
+  String moving = "Servo moving to ";
+  String output = moving + pos;
+  Serial.println(output);
+  int posInitial = serv.read();
+  while(posInitial != pos) {
+    if(posInitial<pos) {
+      serv.write(posInitial++);
+    }
+    else {
+      serv.write(posInitial--);
+    }
+    delay(10);
+  }
+  String done = "Servo at ";
+  output = done + pos;
+  Serial.println(output);
+  return pos;
+  
 }
