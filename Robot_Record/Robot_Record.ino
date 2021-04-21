@@ -21,6 +21,10 @@ Servo jaws,base,arm,forearm;
 /*  Initialize constants for joystick switch input pin numbers
     digital pins 2-3     */
 
+#define PLAY 12
+#define REC 13
+/*  Initialize constants for button inputs  */
+
 double jaws_out = 0;
 double base_out = 90;
 double arm_out = 90;
@@ -41,6 +45,9 @@ void setup() {
   pinMode(joy2_press, INPUT);
   digitalWrite(joy1_press, HIGH);
   digitalWrite(joy2_press, HIGH);
+
+  pinMode(REC, INPUT_PULLUP);
+  pinMode(PLAY, INPUT_PULLUP);
 
   jaws.attach(6); // Connect jaws servo to pin 6
   base.attach(9); // Connect base servo to pin 9
