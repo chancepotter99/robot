@@ -1,7 +1,7 @@
 
 #include <Servo.h>
 //Includes library containing relevant servo functions
-
+//Hiiii hellooooooo
 Servo jaws,base,arm,forearm;
 //Creates objets for each servo
 /* jaw - controls servo which moves the pinchers
