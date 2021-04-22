@@ -44,9 +44,15 @@ double drift_ratio = 0.25;
 String bar = "-------------------------";
 // visually separates serial monitor outputs
 
+const int arrLength = 100;
+int baser[arrLength],jawsr[arrLength],armr[arrLength],forearmr[arrLength]; 
+  //allocate storage for position data
+
+int t = 0;
+
 void setup() {
-  pinMode(joy1_press, INPUT);
-  pinMode(joy2_press, INPUT);
+  pinMode(joy1_press, INPUT_PULLUP);
+  pinMode(joy2_press, INPUT_PULLUP);
   digitalWrite(joy1_press, HIGH);
   digitalWrite(joy2_press, HIGH);
 
@@ -67,6 +73,14 @@ void setup() {
   Serial.begin(9600);
   center = 512;
   // Define center value of the joystick as 512
+
+ for (int i = 0; i < arrLength; i++) {
+  //Initialize recording array values to a default recording in neutral position
+  jawsr[i] = 0;
+  baser[i] = 70;
+  armr[i] = 90;
+  forearmr[i] = 90;
+ }
 }
 
 
@@ -79,13 +93,10 @@ bool isRecording = false;
   //Initialize boolean value for movement recording
 
 bool isPlaying = false;
-  //Initalize boolean value for recording playback
+  //Initialize boolean value for recording playback
 
-const int arrLength = 150;
-int baser[arrLength],jawsr[arrLength],armr[arrLength],forearmr[arrLength]; 
-  //allocate storage for position data
-
-int t = 0;
+bool increase = true;
+  //Initialize boolean value for boomerang feature
 
 void loop() {
  
@@ -135,13 +146,36 @@ void loop() {
       
 
   if (isPlaying) {
+    if (t == 0) {
+      Serial.println("Locating starting position...");
+      goToAll(jawsr[t],baser[t],armr[t],forearmr[t]);
+      Serial.println("Now playing. Press PLAY to stop or RECORD to begin a new recording");
+    }
     jaws_out = jawsr[t];
     base_out = baser[t];
     arm_out = armr[t];
     forearm_out = forearmr[t];
     //Set servo positions to stored values from recording arrays
-    t++; // Move to the next position in the arrays
-    if (t>=arrLength) {t=0;} //Continuously replay until PLAY button is pushed again
+
+    //BOOMERANG
+    //Once end of recording is done, recording plays in reverse
+    if (increase) {
+      t++;
+      if(t>=arrLength) {
+        t--;
+        increase = false;
+      }
+    } else {
+      t--;
+      if (t<=0) {
+        t++;
+        increase = true;
+      }
+    }
+//    //REPEAT FROM BEGINNING   
+//    t++; // Move to the next position in the arrays
+//    if (t>=arrLength) {t=0;} //Continuously replay until PLAY button is pushed again
+    
   } 
   else {
     joy_base = -(analogRead(joy1_x)-center); 
@@ -196,13 +230,15 @@ void loop() {
     
     if (forearm_out < 90-arm_out) {forearm_out = 90-arm_out;}
     // Prevent movement of forearm past arm such that it becomes stuck
-          
-    if (digitalRead(joy1_press) == LOW) {
+      if (digitalRead(joy1_press) == LOW) {
       reset();
       while(digitalRead(joy1_press) == LOW){}
     }
-  // Check for reset button
+  // Check for reset button     
+    
   }
+
+
   
   jaws.write(jaws_out);
   base.write(base_out);
@@ -268,5 +304,43 @@ int goTo(Servo serv, int pos) {
   output = done + pos;
   Serial.println(output);
   return pos;
+}
+
+//Move all servos at once to a specific position
+void goToAll(int jawsPos, int basePos, int armPos, int forePos) {
+/* Currently moves all four servos one degree at a time in 
+ * the necessary direction. */
+ 
+  int jawsInit = jaws.read();
+  int baseInit = base.read();
+  int armInit = arm.read();
+  int foreInit = forearm.read();
+  int jawsDif = jawsPos - jawsInit;
+  int baseDif = basePos - baseInit;
+  int armDif = armPos - armInit;
+  int foreDif = forePos - foreInit;
+
   
+  while (jawsInit != jawsPos
+        || baseInit != basePos
+        || armInit != armPos 
+        || foreInit != forePos) {
+    if (jawsInit != jawsPos) {
+      jawsInit = jawsInit + jawsDif/abs(jawsDif);
+      jaws.write(jawsInit);
+    }
+    if (baseInit != basePos) {
+      baseInit = baseInit + baseDif/abs(baseDif);
+      base.write(baseInit);
+    }
+    if (armInit != armPos) {
+      armInit = armInit + armDif/abs(armDif);
+      arm.write(armInit);
+    }
+    if (foreInit != forePos) {
+      foreInit = foreInit + foreDif/abs(foreDif);
+      forearm.write(foreInit);
+    }
+    delay(10);
+  }
 }
