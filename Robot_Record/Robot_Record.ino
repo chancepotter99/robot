@@ -1,4 +1,3 @@
-
 #include <Servo.h>
 //Includes library containing relevant servo functions
 
@@ -89,6 +88,9 @@ double joy_jaws,joy_base,joy_arm,joy_forearm;
 
 double jaws_speed, base_speed, arm_speed, forearm_speed;
 
+double jawsprev, baseprev, armprev, forearmprev;
+  //Initialize the values of the previous loop iteration's speed for jaws, base, arm, and forearm servos, used in motionpoint
+
 bool isRecording = false; 
   //Initialize boolean value for movement recording
 
@@ -97,6 +99,9 @@ bool isPlaying = false;
 
 bool increase = true;
   //Initialize boolean value for boomerang feature
+
+bool checkpoint;
+  //Initialize boolean determining the beginnings & ends of new servo motions
 
 void loop() {
  
@@ -109,12 +114,26 @@ void loop() {
     } 
     else if (isPlaying) {
       // Button was pressed after playback was started
+      for (int i = 0; i < arrLength; i++) {
+        //Initialize recording array values to a default recording in neutral position
+        jawsr[i] = 0;
+        baser[i] = 70;
+        armr[i] = 90;
+        forearmr[i] = 90;
+       }
       isPlaying = false; //Playback stops
       isRecording = true; //Begin recording
       Serial.println("Playback stopped, now recording...");
     }
     else {
       // Button was pressed to start a recording
+      for (int i = 0; i < arrLength; i++) {
+        //Initialize recording array values to a default recording in neutral position
+        jawsr[i] = 0;
+        baser[i] = 70;
+        armr[i] = 90;
+        forearmr[i] = 90;
+       }
       isRecording = true; //Begin recording
       Serial.println("Now recording...");
     }
@@ -123,6 +142,7 @@ void loop() {
   }
 
   if (digitalRead(PLAY) == LOW) {
+    t = 0; //Place recording pointer at beginning of array
     Serial.println(bar);
     if (isPlaying) {
       // Button was pressed after playback started
@@ -134,47 +154,50 @@ void loop() {
       isRecording = false; //Stop recording
       isPlaying = true; //Play what was just recorded
       Serial.println("Recording stopped, now beginning playback...");
+      Serial.println("Locating starting position...");
+      goToAll(jawsr[t],baser[t],armr[t],forearmr[t]);
+      Serial.println("Now playing. Press PLAY to stop or RECORD to begin a new recording");
     }
     else {
       // Button was pressed to play previously stored playback
       isPlaying = true; //Begin playback
       Serial.println("Beginning Playback...");
+      Serial.println("Locating starting position...");
+      goToAll(jawsr[t],baser[t],armr[t],forearmr[t]);
+      Serial.println("Now playing. Press PLAY to stop or RECORD to begin a new recording");
     }
-    t = 0; //Place recording pointer at beginning of array
     delay(1000);
   }
       
 
   if (isPlaying) {
     if (t == 0) {
-      Serial.println("Locating starting position...");
       goToAll(jawsr[t],baser[t],armr[t],forearmr[t]);
-      Serial.println("Now playing. Press PLAY to stop or RECORD to begin a new recording");
     }
     jaws_out = jawsr[t];
     base_out = baser[t];
     arm_out = armr[t];
     forearm_out = forearmr[t];
     //Set servo positions to stored values from recording arrays
-
+    goToAll(jaws_out,base_out,arm_out,forearm_out);
     //BOOMERANG
     //Once end of recording is done, recording plays in reverse
-    if (increase) {
-      t++;
-      if(t>=arrLength) {
-        t--;
-        increase = false;
-      }
-    } else {
-      t--;
-      if (t<=0) {
-        t++;
-        increase = true;
-      }
-    }
-//    //REPEAT FROM BEGINNING   
-//    t++; // Move to the next position in the arrays
-//    if (t>=arrLength) {t=0;} //Continuously replay until PLAY button is pushed again
+//    if (increase) {
+//      t++;
+//      if(t>=arrLength) {
+//        t--;
+//        increase = false;
+//      }
+//    } else {
+//      t--;
+//      if (t<=0) {
+//        t++;
+//        increase = true;
+//      }
+//    }
+    //REPEAT FROM BEGINNING   
+    t++; // Move to the next position in the arrays
+    if (t>=arrLength) {t=0;} //Continuously replay until PLAY button is pushed again
     
   } 
   else {
@@ -245,17 +268,22 @@ void loop() {
   arm.write(arm_out);
   forearm.write(forearm_out);
     // Output servo angles 
+
+  checkpoint = ((base_speed!=0) && (baseprev==0)) || ((base_speed==0) && (baseprev!=0))
+                || ((jaws_speed!=0) && (jawsprev==0)) || ((jaws_speed==0) && (jawsprev!=0)) 
+                || ((forearm_speed!=0) && (forearmprev==0)) || ((forearm_speed==0) && (forearmprev!=0)) 
+                || ((arm_speed!=0) && (armprev==0)) || ((arm_speed==0) && (armprev!=0));
  
-  if (isRecording && t<arrLength) {
-    /* If recording has started and there is memory left, postion 
-     * data will be stored
+  if (isRecording && t<arrLength && checkpoint) {
+    /* If recording has started, there is memory left, and a servo has started or stopped moving, 
+     * position data will be stored
      */
     jawsr[t] = jaws_out;
     baser[t] = base_out;
     armr[t] = arm_out;
     forearmr[t] = forearm_out;
     t++;
-  } else if (isRecording) {
+  } else if (isRecording && t>= arrLength) {
     /* If recording has started and there is no more memory
      * then the recording will end and the memory pointer is set to 0
      * so that the next recording overwrites previous data.
@@ -265,6 +293,11 @@ void loop() {
     Serial.println("Memory full, recording stopped.");
     t = 0;
   }
+
+  baseprev=base_speed;
+  armprev=arm_speed;
+  forearmprev=forearm_speed;
+  jawsprev=jaws_speed;
   
   delay(10);
   // wait 10 ms
@@ -325,6 +358,13 @@ void goToAll(int jawsPos, int basePos, int armPos, int forePos) {
         || baseInit != basePos
         || armInit != armPos 
         || foreInit != forePos) {
+    if (digitalRead(PLAY) == LOW || digitalRead(REC) == LOW) {
+      jaws_out = jawsInit;
+      base_out = baseInit;
+      arm_out = armInit;
+      forearm_out = foreInit;
+      break;
+    }
     if (jawsInit != jawsPos) {
       jawsInit = jawsInit + jawsDif/abs(jawsDif);
       jaws.write(jawsInit);
