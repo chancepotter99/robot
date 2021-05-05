@@ -156,6 +156,7 @@ void loop() {
       Serial.println("Recording stopped, now beginning playback...");
       Serial.println("Locating starting position...");
       goToAll(jawsr[t],baser[t],armr[t],forearmr[t]);
+      delay(100);
       Serial.println("Now playing. Press PLAY to stop or RECORD to begin a new recording");
     }
     else {
@@ -164,6 +165,7 @@ void loop() {
       Serial.println("Beginning Playback...");
       Serial.println("Locating starting position...");
       goToAll(jawsr[t],baser[t],armr[t],forearmr[t]);
+      delay(100);
       Serial.println("Now playing. Press PLAY to stop or RECORD to begin a new recording");
     }
     delay(1000);
@@ -333,6 +335,7 @@ int goTo(Servo serv, int pos) {
     }
     delay(10);
   }
+  delay(100);
   String done = "Servo at ";
   output = done + pos;
   Serial.println(output);
